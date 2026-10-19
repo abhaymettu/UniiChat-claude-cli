@@ -1,7 +1,7 @@
 // Agent
 // =====
-// claude-api and openai-api in Unii's own loop; a Wire (Anthropic.ts,
-// OpenAI.ts) shapes requests and reads streams. Each step sends every
+// claude-api, claude-cli and openai-api in Unii's own loop; a Wire
+// (Anthropic.ts, ClaudeCli.ts, OpenAI.ts) shapes requests and reads streams. Each step sends every
 // item and streams one output; tool calls run in order, a message sent
 // mid-run follows the next results, and the call ends at a step with no
 // tools and nothing sent. A request goes again, TRIES times at most,
@@ -33,6 +33,7 @@
 
 import { AskAI, type Grant, type Cost, type Ask, type Block, type Flight, type Try, type End, type Event, type Img, type Kind, type Say } from "./AskAI.ts";
 import { Anthropic } from "./Anthropic.ts";
+import { ClaudeCli } from "./ClaudeCli.ts";
 import { OpenAI } from "./OpenAI.ts";
 import { Price, type Usage } from "./Price.ts";
 import { live_push } from "./View.ts";
@@ -105,6 +106,7 @@ export type Wire<S> = {
   begun   : (ev: any) => boolean;
   step    : (st: S, ask: Ask) => Step;
   usage   : (st: S) => Usage;
+  post?   : (json: string, ask: Ask, signal: AbortSignal) => Promise<Response>;
 };
 
 // Constants
@@ -151,6 +153,8 @@ export namespace Agent {
       try {
         if (ask.vendor === "claude-api") {
           await Agent.loop(Anthropic.wire, run);
+        } else if (ask.vendor === "claude-cli") {
+          await Agent.loop(ClaudeCli.wire, run);
         } else {
           await Agent.loop(OpenAI.wire, run);
         }
@@ -167,8 +171,8 @@ export namespace Agent {
   export async function loop<S>(wire: Wire<S>, run: Run): Promise<void> {
     const { ask, on, end } = run;
     const signal = run.abort.signal;
-    const key = config.KEYS[wire.key];
-    if (!key) {
+    const key = wire.key === "" ? "" : config.KEYS[wire.key];
+    if (wire.key !== "" && !key) {
       throw new Error("no API key: set " + wire.key.toUpperCase() + "_API_KEY");
     }
     const tools = await Agent.server(run);
@@ -362,11 +366,12 @@ export namespace Agent {
     let res: Response | null = null;
     let step: Step;
     try {
-      res = await fetch(wire.url, {
+      const signal = run.ask.bill ? idle.signal : AbortSignal.any([run.abort.signal, idle.signal]);
+      res = wire.post ? await wire.post(json, run.ask, signal) : await fetch(wire.url, {
         method  : "POST",
         headers : wire.headers(key, run.ask),
         body    : json,
-        signal  : run.ask.bill ? idle.signal : AbortSignal.any([run.abort.signal, idle.signal]),
+        signal,
         timeout : false,
       } as RequestInit);
       const why = res.ok && res.body ? "" : "HTTP " + res.status + ": " + Agent.reason(await res.text());
