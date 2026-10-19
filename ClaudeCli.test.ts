@@ -1,5 +1,6 @@
 // ClaudeCli test
 // ==============
+// [Added in the UniiChat-claude-cli fork, 2026. Not part of upstream UniiChat. See README.]
 // `bun test ClaudeCli.test.ts`. The claude-cli wire against a fake claude
 // CLI that speaks stream-json: a turn's reply streams through the real
 // Agent loop with no API key; a history replays its earlier user frames

@@ -1,5 +1,6 @@
 // Pick
 // ====
+// [Modified in the UniiChat-claude-cli fork, 2026: adds the claude-cli vendor. See README.]
 // What a chat's calls run on, kept in its log: a vendor (claude-api,
 // openai-api), a model of its, an effort and a speed; label
 // vendor:model:effort:speed. A chat that saved none takes the config's

@@ -1,5 +1,6 @@
 // InertMcp
 // ========
+// [Added in the UniiChat-claude-cli fork, 2026. Not part of upstream UniiChat. See README.]
 // The MCP server the claude CLI sees Unii's tools through (ClaudeCli.ts):
 // it lists them from the JSON file it is given and runs none, since
 // Unii's own loop runs every tool call the model makes.

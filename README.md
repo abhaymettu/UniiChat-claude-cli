@@ -1,3 +1,121 @@
+UniiChat on a Claude subscription (claude-cli fork)
+===================================================
+
+**This fork runs UniiChat on a Claude subscription (Pro or Max) through
+the official `claude` CLI, instead of metered API keys.** It adds one
+model vendor, `claude-cli`: every model call UniiChat makes runs
+`claude -p` under the login your CLI already has, so you need no
+`ANTHROPIC_API_KEY`. Nothing else in UniiChat changes.
+
+It is a fork of [UniiChat](https://github.com/VictorTaelin/UniiChat) by
+Victor Taelin (Higher Order Company), Apache-2.0. All credit for UniiChat
+itself goes there; the original README follows below, unchanged. This
+fork is not affiliated with Higher Order Company or with Anthropic.
+
+A general version of the same driver,
+for any Anthropic API client, is a separate project:
+[claude-cli-subscription-adapter](https://github.com/abhaymettu/claude-cli-subscription-adapter).
+
+Run it on your subscription
+---------------------------
+
+You need [Bun](https://bun.sh) and the `claude` CLI, logged in (run
+`claude` once and sign in).
+
+    UNII_VENDORS=claude-cli \
+    UNII_PICK=claude-cli:sonnet-5.5:medium:slow \
+    UNII_COMPACTOR=claude-cli:haiku-5.5:high:slow \
+    bun Server.ts                    # http://127.0.0.1:8788
+
+Set `UNII_CLAUDE=/path/to/claude` if the CLI is not on `PATH`. The same
+keys work in `~/.unii/config.json` (`vendors`, `pick`, `compactor`,
+`claude`). You can also offer it next to the API vendors, e.g.
+`UNII_VENDORS=claude-cli,claude-api`, and pick per chat.
+
+How it works
+------------
+
+`ClaudeCli.ts` is a Wire, like `Anthropic.ts` and `OpenAI.ts`. For each
+request it:
+
+1. writes the system prompt to a temporary file and lists UniiChat's tools
+   through `InertMcp.ts`, an MCP server that lists them and runs none;
+2. starts `claude -p` in stream-json mode with its built-in tools,
+   settings and session saving off, and retries off;
+3. replays the earlier turns with `shouldQuery: false` and checks that the
+   CLI acknowledges each one, then sends the last user turn;
+4. passes the CLI's stream events (the API's own SSE events) to
+   UniiChat's normal stream reader, and kills the process group at the
+   first `message_stop`, so a request is one generation.
+
+Tool calls come back to UniiChat's own agent loop, which runs them as it
+always does. The fork never reads, copies or forwards the CLI's login
+token, and it removes the `ANTHROPIC_*` overrides from the CLI's
+environment so the CLI can only use its own login.
+
+Limits
+------
+
+- **Your plan's limits, not dollars.** Every call, including the
+  compactor's background summaries, counts against your subscription's
+  session and weekly limits. A long chat compacts often.
+- **Extra tokens and time.** The CLI adds its own context in front of
+  UniiChat's system prompt, and every call pays a CLI process start
+  (about 1.5 to 2.5 s for a small Haiku call in testing).
+- **Not offered on `claude-cli`:** web search, Opus fast speed, token
+  counting ahead of a call, and UniiChat's own cache marks (the CLI places
+  its own cache breakpoints).
+- **A limit error is not retried.** It ends the call as an error; only
+  "overloaded" is retried.
+- **CLI-version sensitive.** The history replay and stream lines belong
+  to the CLI, not a published API. They were checked on Claude Code
+  2.1.303. If a later CLI changes them, calls fail with "history replay
+  not supported" rather than sending a different prompt.
+- **Tool schemas go through MCP.** Top-level `oneOf`/`anyOf` in a tool
+  schema is not stripped yet.
+- **The CLI puts your account email in the model's context.** The
+  `claude` CLI (checked on 2.1.303) adds the logged-in account's email
+  address to every request as a system note, and has no switch to turn
+  that off. The model can see it and may repeat it, and UniiChat's
+  summaries can store it: in testing, a compaction summary did. Treat
+  chats, summaries and `~/.unii` as personal data and do not share them.
+- **Tested:** offline tests (`ClaudeCli.test.ts`, with a fake CLI) and
+  one real browser session on `claude-cli`: chat turns, a tool call and
+  background compaction all worked.
+
+**Terms.** Check Anthropic's current terms for your plan before using
+this. The page the author read is
+[Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan),
+whose October 7, 2026 update says the Agent SDK, `claude -p` and
+third-party apps can still use subscription limits. That is not a
+guarantee or legal advice. Keep the server for your own use: do not let
+other people's chats run on your subscription.
+
+Roadmap
+-------
+
+- Strip top-level `oneOf`/`anyOf` from tool schemas before they reach
+  the CLI's MCP layer.
+
+Changes from upstream
+---------------------
+
+Per section 4 of the Apache License 2.0, the files this fork changed or
+added say so in their header:
+
+- added: `ClaudeCli.ts`, `InertMcp.ts`, `ClaudeCli.test.ts`;
+- changed: `Agent.ts` (an optional `Wire.post` transport and the
+  `claude-cli` branch), `AskAI.ts` and `Pick.ts` (the `claude-cli`
+  vendor and its models), and this README (this section);
+- rebuilt: `web/app.js`, the prebuilt web client, regenerated from the
+  unchanged `web/src` with `bun run web` so it knows the new models (a
+  generated file, so it carries no header).
+
+Upstream history is kept as is; the fork's changes are the commits after
+it.
+
+---
+
 UniiChat
 ========
 

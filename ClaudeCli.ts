@@ -1,5 +1,6 @@
 // ClaudeCli
 // =========
+// [Added in the UniiChat-claude-cli fork, 2026. Not part of upstream UniiChat. See README.]
 // The wire of claude-cli (Agent.ts): the Messages API as the official
 // claude CLI sends it under the Mac user's own subscription login, so
 // Unii never holds a credential. A request runs `claude -p` once, in

@@ -1,5 +1,6 @@
 // Agent
 // =====
+// [Modified in the UniiChat-claude-cli fork, 2026: adds the claude-cli vendor. See README.]
 // claude-api, claude-cli and openai-api in Unii's own loop; a Wire
 // (Anthropic.ts, ClaudeCli.ts, OpenAI.ts) shapes requests and reads streams. Each step sends every
 // item and streams one output; tool calls run in order, a message sent

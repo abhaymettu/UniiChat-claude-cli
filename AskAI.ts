@@ -1,5 +1,6 @@
 // AskAI
 // =====
+// [Modified in the UniiChat-claude-cli fork, 2026: adds the claude-cli vendor. See README.]
 // One way to call a model: a system prompt and a user message in;
 // Deltas (live pieces) and an Entry per finished message out. send()
 // hands the agent a message at its next chance, stop() aborts, `left`
